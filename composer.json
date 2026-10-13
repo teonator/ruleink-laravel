@@ -1,0 +1,52 @@
+{
+    "name": "teonator/ruleink-laravel",
+    "description": "Laravel adapter for Ruleink. It generates expressions from Eloquent models and applies them to query builders without running the query.",
+    "type": "library",
+    "license": "MIT",
+    "keywords": [
+        "rules",
+        "rules-engine",
+        "expressions",
+        "laravel",
+        "eloquent"
+    ],
+    "authors": [
+        {
+            "name": "Teon Ooi"
+        }
+    ],
+    "repositories": [
+        {
+            "type": "path",
+            "url": "../ruleink"
+        }
+    ],
+    "require": {
+        "php": "^8.2",
+        "illuminate/database": "^11.0 || ^12.0 || ^13.0",
+        "illuminate/support": "^11.0 || ^12.0 || ^13.0",
+        "teonator/ruleink": "@dev"
+    },
+    "require-dev": {
+        "orchestra/testbench": "^9.0 || ^10.0 || ^11.0",
+        "phpunit/phpunit": "^11.5 || ^12.0"
+    },
+    "autoload": {
+        "psr-4": {
+            "Ruleink\\Laravel\\": "src/"
+        }
+    },
+    "autoload-dev": {
+        "psr-4": {
+            "Ruleink\\Laravel\\Tests\\": "tests/"
+        }
+    },
+    "scripts": {
+        "test": "phpunit"
+    },
+    "config": {
+        "sort-packages": true
+    },
+    "minimum-stability": "stable",
+    "prefer-stable": true
+}
