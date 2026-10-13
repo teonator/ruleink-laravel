@@ -1,6 +1,6 @@
 {
     "name": "teonator/ruleink-laravel",
-    "description": "Laravel adapter for Ruleink. It generates expressions from Eloquent models and applies them to query builders without running the query.",
+    "description": "Laravel adapter for RuleInk. It generates expressions from Eloquent models and applies them to query builders without running the query.",
     "type": "library",
     "license": "MIT",
     "keywords": [
@@ -33,12 +33,19 @@
     },
     "autoload": {
         "psr-4": {
-            "Ruleink\\Laravel\\": "src/"
+            "RuleInk\\Laravel\\": "src/"
         }
     },
     "autoload-dev": {
         "psr-4": {
-            "Ruleink\\Laravel\\Tests\\": "tests/"
+            "RuleInk\\Laravel\\Tests\\": "tests/"
+        }
+    },
+    "extra": {
+        "laravel": {
+            "providers": [
+                "RuleInk\\Laravel\\RuleInkServiceProvider"
+            ]
         }
     },
     "scripts": {
