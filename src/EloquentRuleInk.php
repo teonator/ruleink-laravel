@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace RuleInk\Laravel;
 
 use Illuminate\Database\Eloquent\Model;
+use RuleInk\AuthorError;
 use RuleInk\ExpressionDefinition;
 use RuleInk\RuleInk;
 
@@ -31,6 +32,46 @@ final class EloquentRuleInk
         $this->registerModel($schema);
 
         return $this->ruleink->expressionsFor($schema);
+    }
+
+    /**
+     * @param callable(mixed $subject, array<string, mixed> $values): bool $evaluator
+     */
+    public function define(string $schema, ExpressionDefinition $definition, callable $evaluator): void
+    {
+        $this->registerModel($schema);
+        $this->ruleink->define($schema, $definition, $evaluator);
+    }
+
+    /**
+     * @param array<array-key, mixed> $values
+     * @return list<AuthorError>
+     */
+    public function validate(string $schema, string $key, array $values = []): array
+    {
+        $this->registerModel($schema);
+
+        return $this->ruleink->validate($schema, $key, $values);
+    }
+
+    /**
+     * @param array<array-key, mixed> $values
+     */
+    public function evaluate(string $schema, mixed $subject, string $key, array $values = []): bool
+    {
+        $this->registerModel($schema);
+
+        return $this->ruleink->evaluate($schema, $subject, $key, $values);
+    }
+
+    /**
+     * @param array<array-key, mixed> $values
+     */
+    public function apply(string $schema, mixed $datasource, string $key, array $values = []): mixed
+    {
+        $this->registerModel($schema);
+
+        return $this->ruleink->apply($schema, $datasource, $key, $values);
     }
 
     private function registerModel(string $schema): void

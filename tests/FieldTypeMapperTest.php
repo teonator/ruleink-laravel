@@ -70,43 +70,67 @@ final class FieldTypeMapperTest extends TestCase
         ];
     }
 
+    /**
+     * Queries compare stored values, so a cast can only pick a field type its column can store.
+     */
     #[DataProvider('casts')]
-    public function testACastDecidesOverTheColumnType(string $cast, ?FieldType $expected): void
-    {
-        $column = ['type_name' => 'varchar', 'type' => 'varchar(255)'];
+    public function testACastPicksAFieldTypeItsColumnCanStore(
+        string $driver,
+        string $typeName,
+        string $type,
+        string $cast,
+        ?FieldType $expected,
+    ): void {
+        $column = ['type_name' => $typeName, 'type' => $type];
 
-        $this->assertSame($expected, (new FieldTypeMapper())->forColumn('mysql', $column, $cast));
+        $this->assertSame($expected, (new FieldTypeMapper())->forColumn($driver, $column, $cast));
     }
 
     /**
-     * @return array<string, array{string, ?FieldType}>
+     * @return array<string, array{string, string, string, string, ?FieldType}>
      */
     public static function casts(): array
     {
         return [
-            'string' => ['string', FieldType::String],
-            'int' => ['int', FieldType::Number],
-            'integer' => ['integer', FieldType::Number],
-            'float' => ['float', FieldType::Number],
-            'double' => ['double', FieldType::Number],
-            'real' => ['real', FieldType::Number],
-            'decimal with places' => ['decimal:2', FieldType::Number],
-            'bool' => ['bool', FieldType::Boolean],
-            'boolean' => ['boolean', FieldType::Boolean],
-            'date' => ['date', FieldType::Date],
-            'date with format' => ['date:Y-m-d', FieldType::Date],
-            'immutable_date' => ['immutable_date', FieldType::Date],
-            'datetime' => ['datetime', FieldType::DateTime],
-            'datetime with format' => ['datetime:Y-m-d H:i', FieldType::DateTime],
-            'immutable_datetime' => ['immutable_datetime', FieldType::DateTime],
-            'custom_datetime' => ['custom_datetime', FieldType::DateTime],
-            'timestamp is an integer' => ['timestamp', null],
-            'array' => ['array', null],
-            'json' => ['json', null],
-            'collection' => ['collection', null],
-            'encrypted' => ['encrypted', null],
-            'hashed' => ['hashed', null],
-            'cast class' => ['App\Casts\Money', null],
+            'string on varchar' => ['mysql', 'varchar', 'varchar(255)', 'string', FieldType::String],
+            'string on uuid' => ['pgsql', 'uuid', 'uuid', 'string', FieldType::String],
+            'integer on varchar' => ['mysql', 'varchar', 'varchar(255)', 'integer', null],
+            'boolean on varchar' => ['mysql', 'varchar', 'varchar(255)', 'boolean', null],
+            'date on varchar' => ['mysql', 'varchar', 'varchar(255)', 'date', null],
+            'int on int' => ['mysql', 'int', 'int', 'int', FieldType::Number],
+            'boolean on int' => ['sqlite', 'integer', 'integer', 'boolean', FieldType::Boolean],
+            'bool on tinyint(1)' => ['mysql', 'tinyint', 'tinyint(1)', 'bool', FieldType::Boolean],
+            'integer on tinyint(1)' => ['mysql', 'tinyint', 'tinyint(1)', 'integer', FieldType::Number],
+            'decimal on decimal' => ['mysql', 'decimal', 'decimal(10,2)', 'decimal:2', FieldType::Number],
+            'float on decimal' => ['mysql', 'decimal', 'decimal(10,2)', 'float', FieldType::Number],
+            'real on numeric' => ['sqlite', 'numeric', 'numeric', 'real', FieldType::Number],
+            'boolean on decimal' => ['mysql', 'decimal', 'decimal(10,2)', 'boolean', null],
+            'string on decimal' => ['sqlite', 'numeric', 'numeric', 'string', null],
+            'boolean on bool' => ['pgsql', 'bool', 'boolean', 'boolean', FieldType::Boolean],
+            'int on bool' => ['pgsql', 'bool', 'boolean', 'int', null],
+            'boolean on sqlsrv bit' => ['sqlsrv', 'bit', 'bit', 'boolean', FieldType::Boolean],
+            'date on date' => ['mysql', 'date', 'date', 'date', FieldType::Date],
+            'immutable_date on date' => ['mysql', 'date', 'date', 'immutable_date', FieldType::Date],
+            'datetime on date' => ['sqlite', 'date', 'date', 'datetime', null],
+            'datetime on datetime' => ['mysql', 'datetime', 'datetime', 'datetime', FieldType::DateTime],
+            'datetime with format' => ['mysql', 'datetime', 'datetime', 'datetime:Y-m-d H:i', FieldType::DateTime],
+            'immutable_datetime on timestamp' => [
+                'mysql',
+                'timestamp',
+                'timestamp',
+                'immutable_datetime',
+                FieldType::DateTime,
+            ],
+            'custom_datetime on datetime' => ['mysql', 'datetime', 'datetime', 'custom_datetime', FieldType::DateTime],
+            'date on datetime' => ['mysql', 'datetime', 'datetime', 'date:Y-m-d', FieldType::Date],
+            'timestamp is an integer' => ['mysql', 'datetime', 'datetime', 'timestamp', null],
+            'array' => ['mysql', 'text', 'text', 'array', null],
+            'json' => ['mysql', 'text', 'text', 'json', null],
+            'collection' => ['mysql', 'text', 'text', 'collection', null],
+            'encrypted' => ['mysql', 'text', 'text', 'encrypted', null],
+            'hashed' => ['mysql', 'varchar', 'varchar(255)', 'hashed', null],
+            'cast class' => ['mysql', 'varchar', 'varchar(255)', 'App\Casts\Money', null],
+            'cast on a column with no field type' => ['mysql', 'json', 'json', 'string', null],
         ];
     }
 }

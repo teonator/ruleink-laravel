@@ -18,7 +18,7 @@ final class ExpressionsForModelTest extends TestCase
         $this->assertContains('price.gt', $keys);
     }
 
-    public function testACastDecidesTheFieldType(): void
+    public function testACastPicksAFieldTypeItsColumnCanStore(): void
     {
         $keys = array_column(RuleInk::expressionsFor(Product::class), 'key');
 
@@ -54,5 +54,17 @@ final class ExpressionsForModelTest extends TestCase
         $this->expectExceptionMessage('Unknown schema [' . Order::class . '].');
 
         RuleInk::expressionsFor(Order::class);
+    }
+
+    public function testEvaluatesAModelWithoutListingItsExpressionsFirst(): void
+    {
+        $product = (new Product())->forceFill(['price' => 150]);
+
+        $this->assertTrue(RuleInk::evaluate(Product::class, $product, 'price.gt', ['value' => 100]));
+    }
+
+    public function testValidatesWithoutListingTheModelsExpressionsFirst(): void
+    {
+        $this->assertSame([], RuleInk::validate(Product::class, 'price.gt', ['value' => 100]));
     }
 }
