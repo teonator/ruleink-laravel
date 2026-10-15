@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace RuleInk\Laravel;
 
 use Illuminate\Database\Eloquent\Model;
+use RuleInk\ApplyRefused;
 use RuleInk\AuthorError;
 use RuleInk\ExpressionDefinition;
 use RuleInk\RuleInk;
@@ -66,6 +67,7 @@ final class EloquentRuleInk
 
     /**
      * @param array<array-key, mixed> $values
+     * @throws ApplyRefused when the adapter cannot apply this configured expression to this datasource
      */
     public function apply(string $schema, mixed $datasource, string $key, array $values = []): mixed
     {

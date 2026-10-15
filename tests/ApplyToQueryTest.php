@@ -7,10 +7,15 @@ namespace RuleInk\Laravel\Tests;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Query\Builder as QueryBuilder;
 use Illuminate\Support\Facades\DB;
-use LogicException;
 use PHPUnit\Framework\Attributes\DataProvider;
+use RuleInk\ApplyRefused;
 use RuleInk\ExpressionDefinition;
+use RuleInk\Field;
+use RuleInk\FieldType;
+use RuleInk\Laravel\ConditionCompiler;
+use RuleInk\Laravel\EloquentDatasourceAdapter;
 use RuleInk\Laravel\Facades\RuleInk;
+use RuleInk\Laravel\SqliteDialect;
 use RuleInk\Laravel\Tests\Fixtures\Product;
 
 final class ApplyToQueryTest extends TestCase
@@ -67,10 +72,11 @@ final class ApplyToQueryTest extends TestCase
             fn (mixed $subject, array $values): bool => true,
         );
 
-        $this->expectException(LogicException::class);
-        $this->expectExceptionMessage('cannot apply expression [product.is_cheap].');
-
-        RuleInk::apply(Product::class, Product::query(), 'product.is_cheap');
+        $this->assertRefused(
+            'product.is_cheap',
+            'Datasource adapter [' . EloquentDatasourceAdapter::class . '] cannot apply expression [product.is_cheap].',
+            fn () => RuleInk::apply(Product::class, Product::query(), 'product.is_cheap'),
+        );
     }
 
     public function testNarrowsAnEloquentBuilderJoinedToATableWithTheSameColumn(): void
@@ -128,10 +134,11 @@ final class ApplyToQueryTest extends TestCase
     {
         $query = DB::query()->from(DB::raw('products'))->join('products as other', 'other.id', '=', 'products.id');
 
-        $this->expectException(LogicException::class);
-        $this->expectExceptionMessage('RuleInk cannot tell which table [price] belongs to in this query.');
-
-        RuleInk::apply(Product::class, $query, 'price.gt', ['value' => 100]);
+        $this->assertRefused(
+            'price.gt',
+            'RuleInk cannot tell which table [price] belongs to in this query.',
+            fn () => RuleInk::apply(Product::class, $query, 'price.gt', ['value' => 100]),
+        );
     }
 
     /**
@@ -156,10 +163,11 @@ final class ApplyToQueryTest extends TestCase
      */
     public function testRefusesANumberWithMoreDigitsThanADoubleHolds(): void
     {
-        $this->expectException(LogicException::class);
-        $this->expectExceptionMessage('Value [100.000000000000001] has more digits than a query can compare exactly.');
-
-        RuleInk::apply(Product::class, Product::query(), 'price.eq', ['value' => '100.000000000000001']);
+        $this->assertRefused(
+            'price.eq',
+            'Value [100.000000000000001] has more digits than a query can compare exactly.',
+            fn () => RuleInk::apply(Product::class, Product::query(), 'price.eq', ['value' => '100.000000000000001']),
+        );
     }
 
     /**
@@ -169,10 +177,11 @@ final class ApplyToQueryTest extends TestCase
     #[DataProvider('numbersFromTwoToTheFiftyThree')]
     public function testRefusesANumberFromTwoToTheFiftyThree(int|float|string $value): void
     {
-        $this->expectException(LogicException::class);
-        $this->expectExceptionMessage("Value [{$value}] is too large for a query to compare exactly.");
-
-        RuleInk::apply(Product::class, Product::query(), 'price.eq', ['value' => $value]);
+        $this->assertRefused(
+            'price.eq',
+            "Value [{$value}] is too large for a query to compare exactly.",
+            fn () => RuleInk::apply(Product::class, Product::query(), 'price.eq', ['value' => $value]),
+        );
     }
 
     /**
@@ -203,10 +212,11 @@ final class ApplyToQueryTest extends TestCase
     {
         $query = Product::where('price', 50)->union(Product::where('price', 300));
 
-        $this->expectException(LogicException::class);
-        $this->expectExceptionMessage('RuleInk cannot apply expressions to a union query.');
-
-        RuleInk::apply(Product::class, $query, 'price.gt', ['value' => 100]);
+        $this->assertRefused(
+            'price.gt',
+            'RuleInk cannot apply expressions to a union query.',
+            fn () => RuleInk::apply(Product::class, $query, 'price.gt', ['value' => 100]),
+        );
     }
 
     /**
@@ -215,10 +225,13 @@ final class ApplyToQueryTest extends TestCase
     #[DataProvider('untestedDrivers')]
     public function testRefusesADatabaseItCannotCheckParityOn(string $driver): void
     {
-        $this->expectException(LogicException::class);
-        $this->expectExceptionMessage("RuleInk cannot apply expressions to [{$driver}] queries yet.");
-
-        RuleInk::apply(Product::class, DB::connection($driver)->table('products'), 'price.gt', ['value' => 1]);
+        $this->assertRefused(
+            'price.gt',
+            "RuleInk cannot apply expressions to [{$driver}] queries yet.",
+            fn () => RuleInk::apply(Product::class, DB::connection($driver)->table('products'), 'price.gt', [
+                'value' => 1,
+            ]),
+        );
     }
 
     /**
@@ -230,6 +243,42 @@ final class ApplyToQueryTest extends TestCase
             'PostgreSQL' => ['pgsql'],
             'SQL Server' => ['sqlsrv'],
         ];
+    }
+
+    /**
+     * Every operator in the catalogue compiles today; this covers one added to core before the compiler knows it.
+     */
+    public function testRefusesAnOperatorItCannotCompile(): void
+    {
+        $definition = ExpressionDefinition::generated(
+            new Field('price', FieldType::Number),
+            'between',
+            'Price is between',
+        );
+
+        $this->assertRefused(
+            'price.between',
+            'Operator [between] is not supported yet.',
+            fn () => (new ConditionCompiler())->compile(
+                DB::table('products'),
+                new SqliteDialect(),
+                'price',
+                $definition,
+                1,
+            ),
+        );
+    }
+
+    private function assertRefused(string $key, string $message, callable $apply): void
+    {
+        try {
+            $apply();
+            $this->fail('Expected ApplyRefused.');
+        } catch (ApplyRefused $refused) {
+            $this->assertSame($key, $refused->key);
+            $this->assertSame(EloquentDatasourceAdapter::class, $refused->adapter);
+            $this->assertSame($message, $refused->getMessage());
+        }
     }
 
     /**

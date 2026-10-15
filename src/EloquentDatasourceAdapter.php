@@ -7,7 +7,7 @@ namespace RuleInk\Laravel;
 use Illuminate\Database\Eloquent\Builder as EloquentBuilder;
 use Illuminate\Database\Query\Builder as QueryBuilder;
 use Illuminate\Database\Query\Expression;
-use LogicException;
+use RuleInk\ApplyRefused;
 use RuleInk\ConfiguredExpression;
 use RuleInk\DatasourceAdapter;
 use RuleInk\ExpressionDefinition;
@@ -55,16 +55,16 @@ final class EloquentDatasourceAdapter implements DatasourceAdapter
         $query = $builder instanceof EloquentBuilder ? $builder->getQuery() : $builder;
 
         if (!empty($query->unions)) {
-            throw new LogicException('RuleInk cannot apply expressions to a union query.');
+            throw new ApplyRefused($expression->key, self::class, 'RuleInk cannot apply expressions to a union query.');
         }
 
-        $dialect = $this->dialectFor($query);
+        $dialect = $this->dialectFor($query, $expression->key);
 
         $this->groupExistingConditions($query);
         $this->compiler->compile(
             $query,
             $dialect,
-            $this->qualify($query, $definition->field),
+            $this->qualify($query, $definition->field, $expression->key),
             $definition,
             $expression->values['value'],
         );
@@ -72,24 +72,32 @@ final class EloquentDatasourceAdapter implements DatasourceAdapter
         return $builder;
     }
 
-    private function dialectFor(QueryBuilder $query): QueryDialect
+    private function dialectFor(QueryBuilder $query, string $key): QueryDialect
     {
         $driver = $query->getConnection()->getDriverName();
 
         return $this->dialects[$driver]
-            ?? throw new LogicException("RuleInk cannot apply expressions to [{$driver}] queries yet.");
+            ?? throw new ApplyRefused(
+                $key,
+                self::class,
+                "RuleInk cannot apply expressions to [{$driver}] queries yet.",
+            );
     }
 
     /**
      * Qualifies the field with the query's table or alias, so a join to a table with the same column cannot make
      * it ambiguous.
      */
-    private function qualify(QueryBuilder $query, string $field): string
+    private function qualify(QueryBuilder $query, string $field, string $key): string
     {
         $table = $this->tableOf($query);
 
         if ($table === null && !empty($query->joins)) {
-            throw new LogicException("RuleInk cannot tell which table [{$field}] belongs to in this query.");
+            throw new ApplyRefused(
+                $key,
+                self::class,
+                "RuleInk cannot tell which table [{$field}] belongs to in this query.",
+            );
         }
 
         return $table === null ? $field : "{$table}.{$field}";
