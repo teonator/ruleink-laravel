@@ -157,10 +157,6 @@ final class ApplyToQueryTest extends TestCase
         $this->assertSame([2], $builder->pluck('id')->all());
     }
 
-    /**
-     * SQLite stores decimals as doubles and MySQL compares a decimal with a string as doubles, so more digits than a
-     * double holds would be rounded away.
-     */
     public function testRefusesANumberWithMoreDigitsThanADoubleHolds(): void
     {
         $this->assertRefused(
@@ -170,10 +166,6 @@ final class ApplyToQueryTest extends TestCase
         );
     }
 
-    /**
-     * From 2^53 a double skips integers: SQLite compares a stored double with a bound integer exactly, and MySQL
-     * compares an integer column with a string as doubles, so either would disagree with evaluate().
-     */
     #[DataProvider('numbersFromTwoToTheFiftyThree')]
     public function testRefusesANumberFromTwoToTheFiftyThree(int|float|string $value): void
     {

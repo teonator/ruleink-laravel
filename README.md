@@ -1,6 +1,6 @@
 # RuleInk Laravel
 
-Laravel adapter for [RuleInk](https://github.com/teonator/ruleink). It generates expressions from Eloquent models and applies them to query builders without running the query.
+Laravel adapter for [RuleInk](https://github.com/teonator/ruleink). It generates expressions from Eloquent models and applies them to SQLite and MySQL query builders without running the query.
 
 ## Requirements
 

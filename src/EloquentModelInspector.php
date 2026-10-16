@@ -28,7 +28,7 @@ final class EloquentModelInspector
         $fields = [];
 
         foreach ($columns as $column) {
-            // Rule authors see every field, so attributes the model hides stay out.
+            // Authors see every field, so attributes the model hides stay out.
             if (in_array($column['name'], $hidden, true)) {
                 continue;
             }
